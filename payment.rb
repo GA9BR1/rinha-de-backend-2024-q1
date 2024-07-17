@@ -1,11 +1,11 @@
 class Payment
   attr_reader :amount, :client_id, :operation, :description, :conn
-  
+
   NotFound = Class.new(StandardError)
-  
+
   def initialize(params, conn)
     validate_params(params)
-    
+
     @amount = params['valor']
     @client_id = params['client_id']
     @operation = params['tipo']
@@ -36,7 +36,7 @@ class Payment
   end
 
   def validate_params_type(params)
-    unless params['valor'].is_a?(Integer) && params['client_id'].is_a?(Integer) && 
+    unless params['valor'].is_a?(Integer) && params['client_id'].is_a?(Integer) &&
            params['tipo'].is_a?(String) && params['descricao'].is_a?(String)
       raise ArgumentError, "Invalid parameters type"
     end
@@ -59,23 +59,23 @@ class Payment
       raise ArgumentError, "Invalid operation"
     end
   end
-  
+
   def validate_params_description(params)
     unless params['descricao'].length > 0 && params['descricao'].length <= 10
       raise ArgumentError, "Invalid description"
     end
   end
-  
+
   def credit_amount
-    result = conn.exec_params('SELECT credit_amount($1, $2, $3)', [@client_id, @amount, @description])
+    result = conn.exec_params('SELECT credit_amount($1, $2, $3)', [client_id, amount, description])
     response(result, 'credit_amount')
   end
-  
+
   def debit_amount
-    result = conn.exec_params('SELECT debit_amount($1, $2, $3)', [@client_id, @amount, @description])
+    result = conn.exec_params('SELECT debit_amount($1, $2, $3)', [client_id, amount, description])
     response(result, 'debit_amount')
   end
-  
+
   ResponseJson = Struct.new(:success, :amount, :limit) do
     def json_result
       {
@@ -84,7 +84,7 @@ class Payment
       }.to_json
     end
   end
-  
+
   def response(result, type)
     success, amount, limit = result[0][type][1..-2].split(',')
     if amount == nil && limit == nil
