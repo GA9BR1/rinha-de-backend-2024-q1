@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 999999s
+      start_period: 10s
+      start_interval: 1s
+      retries: 0
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    deploy:
+      resources:
+        limits:
+          cpus: '0.55'
+          memory: 160M
+
+  pg_bouncer:
+    image: bitnami/pgbouncer:latest
+    container_name: pg_bouncer
+    tty: true
+    stdin_open: true
+    ports:
+      - "6432:6432"
+    command: pgbouncer /opt/bitnami/pgbouncer/conf/pgbouncer.ini
+    environment:
+      HISTFILE: /tmp/.bash_history
+    volumes: 
+      - ./pgbouncer.ini:/opt/bitnami/pgbouncer/conf/pgbouncer.ini
+      - ./userlist.txt:/opt/bitnami/pgbouncer/conf/userlist.txt
+      - ./healthcheck.sh:/healthcheck.sh
+    healthcheck:
+      test: ["CMD", "./healthcheck.sh"]
+      interval: 999999s
+      start_period: 10s
+      start_interval: 1s
+      retries: 0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 100M
+
+  api01:
+    image: ruby:3.3.3
+    container_name: api01
+    working_dir: /app
+    tty: true
+    stdin_open: true
+    command: bash -c "bundle install && ruby server.rb"
+    environment:
+      PORT: 6464
+    ports:
+      - "6464:6464"
+    volumes:
+      - .:/app
+      - rubygems:/usr/local/bundle
+    depends_on:
+      pg_bouncer:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 120M
+
+  api02:
+    image: ruby:3.3.3
+    container_name: api02
+    working_dir: /app
+    tty: true
+    stdin_open: true
+    command: bash -c "bundle install && ruby server.rb"
+    environment:
+      PORT: 6464
+    ports:
+      - "6465:6464"
+    volumes:
+      - .:/app
+      - rubygems:/usr/local/bundle
+    depends_on:
+        pg_bouncer:
+          condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 120M
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api01
+      - api02
+    ports:
+      - "9999:9999"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 50M
+
+volumes: 
+  rubygems:
+  database:
