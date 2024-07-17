@@ -84,7 +84,7 @@ services:
     stdin_open: true
     command: bash -c "bundle install && ruby server.rb"
     environment:
-      PORT: 6464
+      PORT: 6465
     ports:
       - "6465:6464"
     volumes:
