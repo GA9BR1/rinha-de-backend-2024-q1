@@ -16,7 +16,6 @@ services:
       retries: 0
     volumes:
       - database:/var/lib/postgresql/data
-      - ./postgresql.conf:/etc/postgresql/postgresql.conf
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     deploy:
       resources:
